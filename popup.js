@@ -27,19 +27,65 @@ function buildLoginForm() {
 }
 
 function buildMainContent() {
-  const button = document.createElement('button');
-  button.textContent = 'Logout';
-  button.addEventListener('click', logout);
+  chrome.storage.local.get('email', ({ email }) => {
+    const div = document.createElement('div');
+    div.textContent = email;
 
-  document.body.innerHTML = '';
-  document.body.appendChild(button);
+    const button = document.createElement('button');
+    button.textContent = 'Logout';
+    button.addEventListener('click', logout);
+
+    const notificationsDiv = document.createElement('div');
+    notificationsDiv.style.maxHeight = '200px';
+
+    document.body.innerHTML = '';
+    document.body.appendChild(div);
+    document.body.appendChild(button);
+    document.body.appendChild(notificationsDiv);
+
+    setupRequest('https://app.gitkraken.com/api/notifications/notifications')
+      .get()
+      .then((notifications) => {
+        notifications.slice(0, 20).forEach((notification) => {
+          console.log(notification);
+          const { event, data } = notification;
+          const notificationDiv = document.createElement('div');
+          notificationDiv.style.borderBottom = '1px solid #ddd';
+
+          switch(event) {
+            case 'card-added':
+              notificationDiv.textContent = `${data.user.name} created card "${data.card.name}"`;
+              break;
+            case 'card-member-added':
+              notificationDiv.textContent = `${data.user.name} assigned ${data.members[0].name} to card "${data.card.name}"`;
+              break;
+            case 'card-moved-column':
+              notificationDiv.textContent = `${data.user.name} moved card "${data.card.name}" to column "${data.column.name}"`;
+              break;
+            case 'card-updated-description':
+              notificationDiv.textContent = `${data.user.name} updated descripton on card "${data.card.name}"`;
+              break;
+            default:
+              notificationDiv.textContent = event;
+              notificationDiv.style.color = 'red';
+              break;
+          }
+
+          notificationsDiv.appendChild(notificationDiv);
+        });
+      });
+  });
 }
 
 function login(accessToken) {
   setupRequest('https://app.gitkraken.com/api/glo/users/validate')
     .post({ auth_token: accessToken })
-    .then(() => {
-      chrome.storage.local.set({ accessToken }, buildMainContent);
+    .then((user) => {
+      const data = {
+        accessToken,
+        email: user.email
+      };
+      chrome.storage.local.set(data, buildMainContent);
     })
     .catch(logout);
 }
@@ -60,24 +106,27 @@ function setupRequest(url) {
 
 function sendRequest(method = 'GET', url = '', data = {}) {
   return new Promise((resolve, reject) => {
-    const request = new XMLHttpRequest();
+    chrome.storage.local.get('accessToken', ({ accessToken }) => {
+      const request = new XMLHttpRequest();
 
-    request.addEventListener('load', (event) => {
-      const response = JSON.parse(event.target.response);
-      if (event.target.status === 200) {
-        resolve(response);
+      request.addEventListener('load', (event) => {
+        const response = JSON.parse(event.target.response);
+        if (event.target.status === 200) {
+          resolve(response);
+        } else {
+          reject(response);
+        }
+      });
+
+      request.open(method, url);
+      request.setRequestHeader('authorization', accessToken);
+
+      if (method === 'POST') {
+        request.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
+        request.send(JSON.stringify(data));
       } else {
-        reject(response);
+        request.send();
       }
     });
-
-    request.open(method, url);
-
-    if (method === 'POST') {
-      request.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
-      request.send(JSON.stringify(data));
-    } else {
-      request.send();
-    }
   });
 }
