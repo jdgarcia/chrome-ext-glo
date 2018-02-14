@@ -46,11 +46,14 @@ function buildMainContent() {
     setupRequest('https://app.gitkraken.com/api/notifications/notifications')
       .get()
       .then((notifications) => {
-        notifications.slice(0, 20).forEach((notification) => {
-          console.log(notification);
+        const newNotifications = notifications.filter(notification => !notification.seen_date);
+        chrome.browserAction.setBadgeText({ text: newNotifications.length > 99 ? '99+' : String(newNotifications.length) });
+
+        newNotifications.slice(0, 20).forEach((notification) => {
           const { event, data } = notification;
           const notificationDiv = document.createElement('div');
-          notificationDiv.style.borderBottom = '1px solid #ddd';
+          notificationDiv.style.padding = '5px';
+          notificationDiv.style.borderTop = '1px solid #ddd';
 
           switch(event) {
             case 'card-added':
