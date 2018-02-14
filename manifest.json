@@ -1,0 +1,14 @@
+{
+  "manifest_version": 2,
+  "name": "Glo",
+  "description": "Glo",
+  "version": "0.0.1",
+
+  "permissions": [
+    "storage"
+  ],
+
+  "browser_action": {
+    "default_popup": "popup.html"
+  }
+}
