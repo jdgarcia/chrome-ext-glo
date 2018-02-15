@@ -1,6 +1,6 @@
 chrome.storage.local.get('accessToken', ({ accessToken }) => {
   if (accessToken) {
-    login(accessToken);
+    buildMainContent();
   } else {
     buildLoginForm();
   }
@@ -17,7 +17,8 @@ function buildLoginForm() {
   const button = document.createElement('button');
   button.textContent = 'Login';
   button.addEventListener('click', () => {
-    login(input.value);
+    login(input.value)
+      .then(buildMainContent);
   });
 
   document.body.innerHTML = '';
@@ -33,7 +34,10 @@ function buildMainContent() {
 
     const button = document.createElement('button');
     button.textContent = 'Logout';
-    button.addEventListener('click', logout);
+    button.addEventListener('click', () => {
+      logout()
+        .then(buildLoginForm);
+    });
 
     const notificationsDiv = document.createElement('div');
     notificationsDiv.style.maxHeight = '200px';
@@ -43,13 +47,9 @@ function buildMainContent() {
     document.body.appendChild(button);
     document.body.appendChild(notificationsDiv);
 
-    setupRequest('https://app.gitkraken.com/api/notifications/notifications')
-      .get()
+    getUnseenNotifications()
       .then((notifications) => {
-        const newNotifications = notifications.filter(notification => !notification.seen_date);
-        chrome.browserAction.setBadgeText({ text: newNotifications.length > 99 ? '99+' : String(newNotifications.length) });
-
-        newNotifications.slice(0, 20).forEach((notification) => {
+        notifications.forEach((notification) => {
           const { event, data } = notification;
           const notificationDiv = document.createElement('div');
           notificationDiv.style.padding = '5px';
@@ -77,59 +77,5 @@ function buildMainContent() {
           notificationsDiv.appendChild(notificationDiv);
         });
       });
-  });
-}
-
-function login(accessToken) {
-  setupRequest('https://app.gitkraken.com/api/glo/users/validate')
-    .post({ auth_token: accessToken })
-    .then((user) => {
-      const data = {
-        accessToken,
-        email: user.email
-      };
-      chrome.storage.local.set(data, buildMainContent);
-    })
-    .catch(logout);
-}
-
-function logout() {
-  chrome.storage.local.remove('accessToken', buildLoginForm);
-}
-
-
-/* request helpers */
-
-function setupRequest(url) {
-  return {
-    get: () => sendRequest('GET', url),
-    post: (data) => sendRequest('POST', url, data)
-  }
-}
-
-function sendRequest(method = 'GET', url = '', data = {}) {
-  return new Promise((resolve, reject) => {
-    chrome.storage.local.get('accessToken', ({ accessToken }) => {
-      const request = new XMLHttpRequest();
-
-      request.addEventListener('load', (event) => {
-        const response = JSON.parse(event.target.response);
-        if (event.target.status === 200) {
-          resolve(response);
-        } else {
-          reject(response);
-        }
-      });
-
-      request.open(method, url);
-      request.setRequestHeader('authorization', accessToken);
-
-      if (method === 'POST') {
-        request.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
-        request.send(JSON.stringify(data));
-      } else {
-        request.send();
-      }
-    });
   });
 }
