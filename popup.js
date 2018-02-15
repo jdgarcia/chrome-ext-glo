@@ -18,7 +18,12 @@ function buildLoginForm() {
   button.textContent = 'Login';
   button.addEventListener('click', () => {
     login(input.value)
-      .then(buildMainContent);
+      .then(buildMainContent)
+      .then(() => {
+        chrome.runtime.getBackgroundPage((page) => {
+          page.setupNotificationPolling();
+        });
+      });
   });
 
   document.body.innerHTML = '';

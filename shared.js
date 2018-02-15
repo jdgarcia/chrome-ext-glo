@@ -39,7 +39,16 @@ function getUnseenNotifications() {
     .get()
     .then((notifications) => {
       const unseenNotifications = notifications.filter((notification) => !notification.seen_date);
-      chrome.browserAction.setBadgeText({ text: unseenNotifications.length > 99 ? '99+' : String(unseenNotifications.length) });
+      let badgeText;
+      if (unseenNotifications.length === 0) {
+        badgeText = '';
+      } else if (unseenNotifications.length < 100) {
+        badgeText = String(unseenNotifications.length);
+      } else {
+        badgeText = '99+';
+      }
+
+      chrome.browserAction.setBadgeText({ text: badgeText });
       return unseenNotifications;
     });
 }
