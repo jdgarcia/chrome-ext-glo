@@ -1,10 +1,22 @@
-const API_BASE = 'https://app.gitkraken.com/api';
+const AUTH_API_BASE = 'https://api.gitkraken.com';
+const GLO_API_BASE = 'https://app.gitkraken.com/api';
+
 const EndPoints = {
-  USER: `${API_BASE}/glo/users/validate`,
-  NOTIFICATIONS: `${API_BASE}/notifications/notifications`
+  AUTH: `${AUTH_API_BASE}/oauth/token`,
+  USER: `${GLO_API_BASE}/glo/users/validate`,
+  NOTIFICATIONS: `${GLO_API_BASE}/notifications/notifications`
 };
 
-function login(accessToken) {
+function login(email, password) {
+  email = encodeURIComponent(email);
+  password = encodeURIComponent(password);
+
+  return setupRequest(EndPoints.AUTH)
+    .post(`grant_type=password&client_id=CLIENT_ID&client_secret=CLIENT_SECRET&username=${email}&password=${password}`)
+    .then(({ access_token }) => validateToken(access_token));
+}
+
+function validateToken(accessToken) {
   return setupRequest(EndPoints.USER)
     .post({ auth_token: accessToken })
     .then((user) => {
@@ -19,9 +31,7 @@ function login(accessToken) {
     })
     .catch((e) => {
       return logout()
-        .then(() => {
-          throw e;
-        });
+        .then(() => Promise.reject(e));
     });
 }
 
@@ -78,8 +88,13 @@ function sendRequest(method, url, data = {}) {
       request.setRequestHeader('authorization', accessToken);
 
       if (method === 'POST') {
-        request.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
-        request.send(JSON.stringify(data));
+        if (url.startsWith(EndPoints.AUTH)) {
+          request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+          request.send(data);
+        } else {
+          request.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
+          request.send(JSON.stringify(data));
+        }
       } else {
         request.send();
       }

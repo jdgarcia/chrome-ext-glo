@@ -10,14 +10,20 @@ chrome.storage.local.get('accessToken', ({ accessToken }) => {
 /* popup content functions */
 
 function buildLoginForm() {
-  const div = document.createElement('div');
-  div.textContent = 'Access Token:';
+  const emailDiv = document.createElement('div');
+  emailDiv.textContent = 'Email:';
+  const passwordDiv = document.createElement('div');
+  passwordDiv.textContent = 'Passowrd:';
 
-  const input = document.createElement('input');
-  const button = document.createElement('button');
-  button.textContent = 'Login';
-  button.addEventListener('click', () => {
-    login(input.value)
+  const emailInput = document.createElement('input');
+  const passwordInput = document.createElement('input');
+  passwordInput.type = 'password';
+
+  const submitButton = document.createElement('button');
+
+  submitButton.textContent = 'Login';
+  submitButton.addEventListener('click', () => {
+    login(emailInput.value, passwordInput.value)
       .then(buildMainContent)
       .then(() => {
         chrome.runtime.getBackgroundPage((page) => {
@@ -27,9 +33,11 @@ function buildLoginForm() {
   });
 
   document.body.innerHTML = '';
-  document.body.appendChild(div);
-  document.body.appendChild(input);
-  document.body.appendChild(button);
+  document.body.appendChild(emailDiv);
+  document.body.appendChild(emailInput);
+  document.body.appendChild(passwordDiv);
+  document.body.appendChild(passwordInput);
+  document.body.appendChild(submitButton);
 }
 
 function buildMainContent() {
